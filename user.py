@@ -41,14 +41,20 @@ class User:
     def add_reply(self, comment):
         self.replies.append(comment)
 
-    def _reply_summaries(self):
+    def reply_summaries(self):
         summaries = []
         for reply in self.replies:
             summaries.append(utils.get_abbreviated_comment(reply))
         return summaries
+
+    def num_replies(self):
+        return len(self.replies)
 
     def inc_num_replies_to_questions(self):
         self.num_replies_to_questions += 1
 
     def relative_contribution(self):
         return len(self.replies) - self.num_replies_to_questions - len(self.questions)
+
+    def relative_contribution_summary(self):
+        return f"{self.relative_contribution()} = numReplies[{len(self.replies)}] - numRepliesToQuestions[{self.num_replies_to_questions}] - numQuestions[{len(self.questions)}]"
