@@ -32,6 +32,9 @@ class User:
     def add_question(self, comment):
         self.questions.append(comment)
 
+    def get_profile_link_string(self):
+        return f"[{self.name}](https://reddit.com/user/{self.name}/)"
+
     def _question_summaries(self):
         summaries = []
         for question in self.questions:

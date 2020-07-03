@@ -1,4 +1,5 @@
 import re
+from copy import deepcopy
 
 """Returns the first 20 chars of a comment with whitespaces replaced by single-space chars."""
 def get_abbreviated_comment(comment):
@@ -12,4 +13,47 @@ In our case this means 2 things:
 """
 def is_target_post(submission, config):
     regular_expression_object = re.compile(config['post_regex'])
-    return submission.stickied and regular_expression_object.match(submission.title) 
+    return submission.stickied and regular_expression_object.match(submission.title)
+
+def get_most_helpful_summary(users):
+  summary = ("User | # Helped"
+            "\n----|:-----:|:-----:|")
+  for user in users[:10]:
+    summary += f"\n{user.get_profile_link_string()} | {user.num_replies()}"
+  return summary
+
+def get_most_helpful_without_replies_summary(users, reply_threshold=3):
+  filtered_users = []
+  # Filter the list of helpful users to only those with top-level comments
+  # that are under the reply_threshold
+  for user in users:
+    if len(filtered_users) >= 10:
+      break
+    questions_that_could_use_some_love = []
+    for question in user.questions:
+      replies = question.replies
+      if len(replies) < reply_threshold:
+        # Only include questions under the threshold
+        questions_that_could_use_some_love.append(question)
+    if len(questions_that_could_use_some_love) > 0:
+      filtered_users.append({
+        'name': user.get_profile_link_string(),
+        'num_helped': user.num_replies(),
+        'questions_that_could_use_some_love': questions_that_could_use_some_love
+      })
+
+  # Produce the summary string
+  summary = ("User | # Helped | Questions that could use some love"
+            "\n----|:-----:|:-----:|")
+  for user in filtered_users:
+    summary += f"\n{user['name']} | {user['num_helped']} | "
+    questions = user['questions_that_could_use_some_love']
+    # Format single questions differently than multiple questions
+    if len(questions) == 1:
+      summary += f"[Comment]({questions[0].permalink})"
+    else:
+      question_strings = []
+      for i in range(len(questions)):
+        question_strings.append(f"[{i}]({question.permalink})")
+      summary += question_strings.join(", ")
+  return summary

@@ -28,7 +28,6 @@ def construct_dict_from_top_level_comments(top_level_comments):
             user = users_by_name.get(username, User(name=username, questions=[]))
             user.add_question(comment)
             users_by_name[username] = user
-            print(f"{username} has asked {len(user.questions)} so far")
 
     return users_by_name
 
@@ -49,19 +48,18 @@ def scan_replies_to_top_level_comments(users_by_name):
                     requestor.inc_num_replies_to_questions()
                     # Update the replier to track their contributions
                     replier_name = reply.author.name
-                    # if (replier_name == "frederferf"):
-                    #     pdb.set_trace()
                     replier = repliers_by_name.get(replier_name, User(name=replier_name, questions=[], replies=[]))
                     replier.add_reply(reply)
                     repliers_by_name[replier_name] = replier
-                    print(f"{replier_name} has responded {len(replier.replies)} times so far ({utils.get_abbreviated_comment(reply)})")
     # Combine the 2 dictionaries
     for username in repliers_by_name:
+        replier = repliers_by_name.get(username)
         if username in users_by_name:
             requestor = users_by_name.get(username)
-            replier = repliers_by_name.get(username)
             combined_user = User.combine(requestor, replier)
             users_by_name[username] = combined_user
+        else:
+            users_by_name[username] = replier
     return users_by_name
 
 def get_users_sorted_by_relative_contribution(users_by_name):
@@ -117,24 +115,17 @@ def main():
     top_level_comments = get_top_level_comments(submission)
     users_by_name = construct_dict_from_top_level_comments(top_level_comments)
     users_by_name = scan_replies_to_top_level_comments(users_by_name)
-    users_sorted_by_contribution = get_users_sorted_by_relative_contribution(users_by_name)[:10]
-    users_sorted_by_replies = get_users_sorted_by_replies(users_by_name)[:10]
 
-    print_users(
-        header="Users sorted by contribution",
-        users=users_sorted_by_contribution,
-        inline_user_callback=User.relative_contribution_summary)
+    users_sorted_by_contribution = get_users_sorted_by_relative_contribution(users_by_name)
+    users_sorted_by_replies = get_users_sorted_by_replies(users_by_name)
 
-    print_users(
-        header="Users sorted by replies",
-        users=users_sorted_by_replies,
-        inline_user_callback=User.num_replies,
-        suffix_user_callback=User.reply_summaries)
 
-    # for user in sorted_users:
-    #     print(user)
-    # for user in sorted_users:
-    #     print(user)
+    response = ("The following users have helped the most people in this thread:\n"
+                f"\n{utils.get_most_helpful_summary(users_sorted_by_replies)}\n"
+                "\nThe following users have helped the most people in this thread without receiving replies to their questions:\n"
+                f"\n{utils.get_most_helpful_without_replies_summary(users_sorted_by_replies)}")
+
+    print(response)
 
 
 if __name__ == "__main__":
