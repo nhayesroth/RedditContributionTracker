@@ -1,5 +1,6 @@
 import re
 from copy import deepcopy
+import time 
 
 """Returns the first 20 chars of a comment with whitespaces replaced by single-space chars."""
 def get_abbreviated_comment(comment):
@@ -48,12 +49,16 @@ def get_most_helpful_without_replies_summary(users, reply_threshold=3):
   for user in filtered_users:
     summary += f"\n{user['name']} | {user['num_helped']} | "
     questions = user['questions_that_could_use_some_love']
-    # Format single questions differently than multiple questions
-    if len(questions) == 1:
-      summary += f"[Comment]({questions[0].permalink})"
-    else:
-      question_strings = []
-      for i in range(len(questions)):
-        question_strings.append(f"[{i}]({question.permalink})")
-      summary += question_strings.join(", ")
+    question_strings = []
+    for i in range(len(questions)):
+      question = questions[i]
+      num_replies = len(question.replies)
+      question_strings.append(f"[{num_replies} replies]({question.permalink})")
+    summary += ", ".join(question_strings)
   return summary
+
+def get_human_readable_time(num_seconds):
+  if num_seconds <= 60:
+    return f"{num_seconds} seconds"
+  num_minutes = round(num_seconds / 60)
+  return f"{num_minutes} minute" if num_minutes == 1 else f"{num_minutes} minutes"
