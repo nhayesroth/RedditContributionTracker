@@ -14,13 +14,15 @@ def get_top_level_comments(submission):
     submission.comments.replace_more(limit=0)
     return submission.comments
 
-def construct_dict_from_top_level_comments(top_level_comments):
+def construct_dict_from_top_level_comments(top_level_comments, bot_username):
     """Scans the top-level comments and constructs a dictionary mapping(name -> User)."""
     users_by_name = dict()
     for comment in top_level_comments:
         # Ignore comments that have been deleted.
         # TODO: this is bad behavior. better would be to call them out or record the comment before it was deleted.
         if comment.author is None:
+            continue
+        elif comment.author.name == bot_username:
             continue
         else:
             username = comment.author.name
@@ -34,7 +36,7 @@ def construct_dict_from_top_level_comments(top_level_comments):
 
     return users_by_name
 
-def scan_replies_to_top_level_comments(users_by_name):
+def scan_replies_to_top_level_comments(users_by_name, bot_username):
     """Scans replies to top-level comments and updates the users_by_name dict."""
     repliers_by_name = dict()
     for username in users_by_name.keys():
@@ -45,6 +47,8 @@ def scan_replies_to_top_level_comments(users_by_name):
             for reply in replies:
                 if reply.author is None:
                     # Ignore deleted responses
+                    continue
+                elif reply.author.name == bot_username:
                     continue
                 else:
                     # Update the requestor to track the number of replies they've received
@@ -111,11 +115,12 @@ def print_users(header, users, inline_user_callback, suffix_user_callback=None):
         print(user_string)
         i += 1
 
-def post(reddit_instance, response, username):
-    submission = reddit_instance.submission(id='hpzt3b')
+def post(submission, response, username):
     top_level_comments = get_top_level_comments(submission)
     for comment in top_level_comments:
-        if comment.author.name == username:
+        if comment.author is None:
+            continue
+        elif comment.author.name == username:
             comment.edit(response)
             print(f"Edited previous comment: {comment.permalink}")
             return
@@ -126,13 +131,13 @@ def post(reddit_instance, response, username):
 def task(config):
     start_time = time.time()
     print(f"\n\ttask execution started at: {time.ctime(start_time)}")
-    
+
     reddit_instance = get_reddit_instance(config)
     submission = get_submission(reddit_instance, config)
 
     top_level_comments = get_top_level_comments(submission)
-    users_by_name = construct_dict_from_top_level_comments(top_level_comments)
-    users_by_name = scan_replies_to_top_level_comments(users_by_name)
+    users_by_name = construct_dict_from_top_level_comments(top_level_comments, config['username'])
+    users_by_name = scan_replies_to_top_level_comments(users_by_name, config['username'])
 
     users_sorted_by_contribution = get_users_sorted_by_relative_contribution(users_by_name)
     users_sorted_by_replies = get_users_sorted_by_replies(users_by_name)
@@ -146,7 +151,7 @@ def task(config):
                 "\n-----\n"
                 f"\nThe following users have helped the most people in this thread, but have fewer than {reply_threshold} replies to their own question(s):\n"
                 f"\n{utils.get_most_helpful_without_replies_summary(users_sorted_by_replies, reply_threshold)}\n")
-    post(reddit_instance, response, config['username'])
+    post(submission, response, config['username'])
 
     end_time = time.time()
     print(f"\ttask execution ended at: {time.ctime(end_time)}")
