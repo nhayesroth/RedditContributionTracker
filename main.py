@@ -111,12 +111,11 @@ def print_users(header, users, inline_user_callback, suffix_user_callback=None):
         print(user_string)
         i += 1
 
-def post(reddit_instance, response):
-    bot_name = 'DynastyFF-bot'
+def post(reddit_instance, response, username):
     submission = reddit_instance.submission(id='hpzt3b')
     top_level_comments = get_top_level_comments(submission)
     for comment in top_level_comments:
-        if comment.author.name == bot_name:
+        if comment.author.name == username:
             comment.edit(response)
             print(f"Edited previous comment: {comment.permalink}")
             return
@@ -124,9 +123,10 @@ def post(reddit_instance, response):
     print(f"Posted new comment: {comment.permalink}")
 
 
-def task(interval):
-    config = get_config();
+def task(config):
     start_time = time.time()
+    print(f"\n\ttask execution started at: {time.ctime(start_time)}")
+    
     reddit_instance = get_reddit_instance(config)
     submission = get_submission(reddit_instance, config)
 
@@ -138,6 +138,7 @@ def task(interval):
     users_sorted_by_replies = get_users_sorted_by_replies(users_by_name)
 
     reply_threshold = 3
+    interval = int(config['interval'])
     response = (f"\nI'm a bot who just wants to make this thread a better place. I run every ~{utils.get_human_readable_time(interval)}.\n"
                 "\n-----\n"
                 "\nThe following users have helped the most people in this thread:\n"
@@ -145,16 +146,16 @@ def task(interval):
                 "\n-----\n"
                 f"\nThe following users have helped the most people in this thread, but have fewer than {reply_threshold} replies to their own question(s):\n"
                 f"\n{utils.get_most_helpful_without_replies_summary(users_sorted_by_replies, reply_threshold)}\n")
-    post(reddit_instance, response)
+    post(reddit_instance, response, config['username'])
 
     end_time = time.time()
-    print(f"\n\ttask execution started at: {time.ctime(start_time)}")
     print(f"\ttask execution ended at: {time.ctime(end_time)}")
     print(f"\ttask execution took: {'{:.2f}'.format(end_time - start_time)} seconds")
 
 def main():
-    interval = 10
-    threading.Thread(target=lambda: scheduler.every(interval, task, interval)).start()
+    config = get_config();
+    interval = int(config['interval']);
+    threading.Thread(target=lambda: scheduler.every(interval, task, config)).start()
 
 if __name__ == "__main__":
     main()

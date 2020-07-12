@@ -23,7 +23,7 @@ def get_most_helpful_summary(users):
     summary += f"\n{user.get_profile_link_string()} | {user.num_replies()}"
   return summary
 
-def get_most_helpful_without_replies_summary(users, reply_threshold=3):
+def get_most_helpful_without_replies_summary(users, reply_threshold):
   filtered_users = []
   # Filter the list of helpful users to only those with top-level comments
   # that are under the reply_threshold
