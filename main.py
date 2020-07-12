@@ -3,7 +3,10 @@
 import praw
 import pdb
 import configparser
+import time
+import threading
 
+import scheduler
 from user import User
 import utils
 
@@ -107,8 +110,10 @@ def print_users(header, users, inline_user_callback, suffix_user_callback=None):
         print(user_string)
         i += 1
 
-def main():
+
+def task():
     config = get_config();
+    start_time = time.time()
     reddit_instance = get_reddit_instance(config)
     submission = get_submission(reddit_instance, config)
 
@@ -124,9 +129,15 @@ def main():
                 f"\n{utils.get_most_helpful_summary(users_sorted_by_replies)}\n"
                 "\nThe following users have helped the most people in this thread without receiving replies to their questions:\n"
                 f"\n{utils.get_most_helpful_without_replies_summary(users_sorted_by_replies)}")
-
     print(response)
 
+    end_time = time.time()
+    print(f"\n\ttask execution started at: {time.ctime(start_time)}")
+    print(f"\ttask execution ended at: {time.ctime(end_time)}")
+    print(f"\ttask execution took: {'{:.2f}'.format(end_time - start_time)} seconds")
+
+def main():
+    threading.Thread(target=lambda: scheduler.every(30, task)).start()
 
 if __name__ == "__main__":
     main()
