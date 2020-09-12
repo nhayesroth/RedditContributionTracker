@@ -1,10 +1,9 @@
-# from urllib.parse import quote_plus
-
-import praw
-import pdb
 import configparser
-import time
+import getopt
+import praw
+import sys
 import threading
+import time
 
 import scheduler
 from user import User
@@ -43,7 +42,7 @@ def scan_replies_to_top_level_comments(users_by_name, bot_username):
         requestor = users_by_name.get(username)
         questions = requestor.questions
         for question in questions:
-            replies = question.replies
+            replies = question.refresh().replies
             for reply in replies:
                 if reply.author is None:
                     # Ignore deleted responses
@@ -103,18 +102,6 @@ def get_submission(reddit_instance, config):
             return submission
     raise ValueError('Unable to find target post. Check the subreddit and post_regex in config.ini')
 
-def print_users(header, users, inline_user_callback, suffix_user_callback=None):
-    i = 1
-    print(header)
-    for user in users:
-        user_string = f"{i}. {user.name} - {inline_user_callback(user)}"
-        if suffix_user_callback:
-            suffix = suffix_user_callback(user)
-            for line in suffix:
-                user_string += f"\n\t{line}"
-        print(user_string)
-        i += 1
-
 def post(submission, response, username):
     top_level_comments = get_top_level_comments(submission)
     for comment in top_level_comments:
@@ -122,45 +109,66 @@ def post(submission, response, username):
             continue
         elif comment.author.name == username:
             comment.edit(response)
-            print(f"Edited previous comment: {comment.permalink}")
+            print(f"Edited previous comment at {time.ctime(time.time())}: {comment.permalink}")
             return
     comment = submission.reply(response)
-    print(f"Posted new comment: {comment.permalink}")
+    print(f"Posted new comment at {time.ctime(time.time())}: {comment.permalink}")
 
 
 def task(config):
-    start_time = time.time()
-    print(f"\n\ttask execution started at: {time.ctime(start_time)}")
-
     reddit_instance = get_reddit_instance(config)
     submission = get_submission(reddit_instance, config)
 
     top_level_comments = get_top_level_comments(submission)
-    users_by_name = construct_dict_from_top_level_comments(top_level_comments, config['username'])
-    users_by_name = scan_replies_to_top_level_comments(users_by_name, config['username'])
+    users_by_name = construct_dict_from_top_level_comments(
+        top_level_comments, config['username'])
+    users_by_name = scan_replies_to_top_level_comments(
+        users_by_name, config['username'])
 
     users_sorted_by_contribution = get_users_sorted_by_relative_contribution(users_by_name)
     users_sorted_by_replies = get_users_sorted_by_replies(users_by_name)
 
     reply_threshold = 3
     interval = int(config['interval'])
-    response = (f"\nI'm a bot who just wants to make this thread a better place. I run every ~{utils.get_human_readable_time(interval)}.\n"
+    response = (f"\nResults will update every ~{utils.get_human_readable_time(interval)}.\n"
                 "\n-----\n"
                 "\nThe following users have helped the most people in this thread:\n"
                 f"\n{utils.get_most_helpful_summary(users_sorted_by_replies)}\n"
                 "\n-----\n"
                 f"\nThe following users have helped the most people in this thread, but have fewer than {reply_threshold} replies to their own question(s):\n"
                 f"\n{utils.get_most_helpful_without_replies_summary(users_sorted_by_replies, reply_threshold)}\n")
-    post(submission, response, config['username'])
+    
+    if config['print_or_post'] == 'post':
+        post(submission, response, config['username'])
+    elif config['print_or_post'] == 'print':
+        print(response)
+    else:
+      print('Unsupported print_or_post: ' + print_or_post)
+      sys.exit(2)
 
-    end_time = time.time()
-    print(f"\ttask execution ended at: {time.ctime(end_time)}")
-    print(f"\ttask execution took: {'{:.2f}'.format(end_time - start_time)} seconds")
+def main(argv):
+    print_or_post = 'post'
+    try:
+        opts, args = getopt.getopt(argv,"p",["print"])
+    except getopt.GetoptError:
+        print('Run in continuous mode:                     python3 main.py')
+        print('Print results instead of posting to Reddit: python3 main.py -p')
+        sys.exit(2)
+    for opt, arg in opts:
+       if opt in ("-p", "--print"):
+          print_or_post = 'print'
 
-def main():
-    config = get_config();
-    interval = int(config['interval']);
-    threading.Thread(target=lambda: scheduler.every(interval, task, config)).start()
+    config = get_config()
+    config['print_or_post'] = print_or_post
+
+    # If targetting a single user or running in print mode => just run the task once.
+    if print_or_post == 'print':
+        task(config)
+        return
+    else:
+        # Otherwise, run continuously on an interval.
+        interval = int(config['interval']);
+        threading.Thread(target=lambda: scheduler.every(interval, task, config)).start()
 
 if __name__ == "__main__":
-    main()
+    main(sys.argv[1:])
