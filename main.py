@@ -166,7 +166,9 @@ def main(argv):
         task(config)
         return
     else:
-        # Otherwise, run continuously on an interval.
+        # Otherwise, run the task once immediately.
+        task(config)
+        # And schedule future runs on an interval.
         interval = int(config['interval']);
         threading.Thread(target=lambda: scheduler.every(interval, task, config)).start()
 
