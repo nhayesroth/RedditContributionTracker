@@ -29,16 +29,18 @@ def add_command_line_args(config, argv):
                 "print_questions",
                 "print_answers",
                 "verbose",
+                "post_id=",
                 "question_username=",
                 "answer_username="
             ])
     except getopt.GetoptError:
-        print('Run in continuous mode:                     python3 main.py')
-        print('Print results instead of posting to Reddit: python3 main.py -')
-        print('Only include questions by 1 user:           python3 main.py -q interesting_user_name')
-        print('Only include answers by 1 user:             python3 main.py -a interesting_user_name')
-        print('Print scanned questions (for debugging):    python3 main.py --print_questions')
-        print('Print scanned answers (for debugging):      python3 main.py --print_answers')
+        print('Run in continuous mode:                        python3 main.py')
+        print('Print results instead of posting to Reddit:    python3 main.py --post_id xjhasd7')
+        print('Choose a post to scan (instead of config.ini): python3 main.py -q interesting_user_name')
+        print('Only include questions by 1 user:              python3 main.py -q interesting_user_name')
+        print('Only include answers by 1 user:                python3 main.py -a interesting_user_name')
+        print('Print scanned questions (for debugging):       python3 main.py --print_questions')
+        print('Print scanned answers (for debugging):         python3 main.py --print_answers')
         sys.exit(2)
     for opt, arg in opts:
        if opt in ["-p", "--print"]:
@@ -47,6 +49,8 @@ def add_command_line_args(config, argv):
         config['print_questions'] = 'true'
        if opt in ["--print_answers"]:
         config['print_answers'] = 'true'
+       if opt in ["--post_id"]:
+        config['post_id'] = arg
        if opt in ["-q", "--question_username"]:
         config['question_username'] = arg
        if opt in ["-a", "--answer_username"]:

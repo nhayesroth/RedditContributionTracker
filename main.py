@@ -11,7 +11,7 @@ import config_utils
 import utils
 
 def get_top_level_comments(submission):
-  submission.comments.replace_more(limit=0)
+  submission.comments.replace_more(limit=None)
   return submission.comments
 
 def construct_dict_from_top_level_comments(top_level_comments, config):
@@ -53,7 +53,7 @@ def construct_dict_from_top_level_comments(top_level_comments, config):
       print(f"User: {username}")
       for question in users_by_name.get(username).questions:
         print(f"\t{utils.get_abbreviated_comment(question)}")
-
+        
   return users_by_name
 
 def scan_replies_to_top_level_comments(users_by_name, config):
@@ -125,6 +125,9 @@ def get_reddit_instance(config):
   )
 
 def get_submission(reddit_instance, config):
+  if (config.get('post_id')):
+    return reddit_instance.submission(id=config.get('post_id'))
+  
   subreddit = reddit_instance.subreddit(config.get('subreddit'))
   for submission in subreddit.hot(limit=10):
     if utils.is_target_post(submission, config):
