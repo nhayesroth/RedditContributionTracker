@@ -1,4 +1,3 @@
-import configparser
 import getopt
 import praw
 import sys
@@ -7,6 +6,7 @@ import time
 
 import scheduler
 from user import User
+import config_utils
 import utils
 
 def get_top_level_comments(submission):
@@ -80,10 +80,6 @@ def get_users_sorted_by_replies(users_by_name):
     users.sort(key=lambda user: user.num_replies(), reverse=True)
     return users
 
-def get_config():
-    config = configparser.ConfigParser()
-    config.read('config.ini')
-    return config['GLOBAL']
 
 def get_reddit_instance(config):
     return praw.Reddit(
@@ -138,31 +134,19 @@ def task(config):
                 f"\nThe following users have helped the most people in this thread, but have fewer than {reply_threshold} replies to their own question(s):\n"
                 f"\n{utils.get_most_helpful_without_replies_summary(users_sorted_by_replies, reply_threshold)}\n")
     
-    if config['print_or_post'] == 'post':
+    if config['mode'] == 'post':
         post(submission, response, config['username'])
-    elif config['print_or_post'] == 'print':
+    elif config['mode'] == 'print':
         print(response)
     else:
-      print('Unsupported print_or_post: ' + print_or_post)
+      print('Unsupported mode: ' + config['mode'])
       sys.exit(2)
 
 def main(argv):
-    print_or_post = 'post'
-    try:
-        opts, args = getopt.getopt(argv,"p",["print"])
-    except getopt.GetoptError:
-        print('Run in continuous mode:                     python3 main.py')
-        print('Print results instead of posting to Reddit: python3 main.py -p')
-        sys.exit(2)
-    for opt, arg in opts:
-       if opt in ("-p", "--print"):
-          print_or_post = 'print'
+    config = config_utils.get_config(argv)
 
-    config = get_config()
-    config['print_or_post'] = print_or_post
-
-    # If targetting a single user or running in print mode => just run the task once.
-    if print_or_post == 'print':
+    # If running in print mode => just run the task once.
+    if config['mode'] == 'print':
         task(config)
         return
     else:
