@@ -28,7 +28,6 @@ def add_command_line_args(config, argv):
                 "print",
                 "print_questions",
                 "print_answers",
-                "verbose",
                 "post_id=",
                 "question_username=",
                 "answer_username="

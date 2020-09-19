@@ -16,7 +16,7 @@ $ python3 main.py
 ```
 
 ## Configuration
-All configuration options are found in [config.ini](https://github.com/nhayesroth/RedditContributionTracker/blob/master/config.ini):
+Most static configuration options are found in [config.ini](https://github.com/nhayesroth/RedditContributionTracker/blob/master/config.ini):
 - `client_id`: The ID of your bot (see [bot_creds_example.png](bot_creds_example.png)).
 - `client_secret`: The secret of your bot (see [bot_creds_example.png](bot_creds_example.png)).
 - `interval`: The interval (in seconds) the bot will wait between scans.
@@ -26,6 +26,15 @@ All configuration options are found in [config.ini](https://github.com/nhayesrot
 - `subreddit`: The subreddit the bot will search for the the thread matching `post_regex`.
 - `user_agent`: User agent passed to PRAW (likely the name of your bot or a description of the specific application).
 - `username`: The username of your bot's reddit account.
+
+You can also specify several options at the command line. These can be seen in [config_utils.py](https://github.com/nhayesroth/RedditContributionTracker/blob/master/config_utils.py):
+- `answer_username`: Only include answers from 1 user (mostly for debugging).
+- `post_id`: Choose a specific post to scan (instead of using the `subreddit` and `post_regex` in `config.ini`)
+- `print_answers`: Prints scanned answers on the command-line (mostly for debugging).
+- `print_questions`: Prints scanned questions on the command-line (mostly for debugging).
+- `print`: Runs the bot once (as opposed to continuously) and prints the results (as opposed to posting them to reddit).
+- `question_username`: Only include questions from 1 user (mostly for debugging).
+
 
 ## How?
 
