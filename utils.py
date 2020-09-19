@@ -2,9 +2,15 @@ import re
 from copy import deepcopy
 import time 
 
-"""Returns the first 20 chars of a comment with whitespaces replaced by single-space chars."""
+"""Returns an abbreviated comment string.
+
+- Includes the first 20 chars of a comment
+- Replaces all whitespace characters replaced with single-space chars.
+- Appends a link to the comment.
+"""
 def get_abbreviated_comment(comment):
-    return re.sub(r"\s+", " ", comment.body[0 : 20], flags=re.UNICODE)
+    return (re.sub(r"\s+", " ", comment.body[0 : 20], flags=re.UNICODE) +
+        f" - https://reddit.com{comment.permalink}")
 
 """Returns whether the specified submission is our target.
 
@@ -17,10 +23,18 @@ def is_target_post(submission, config):
     return submission.stickied and regular_expression_object.match(submission.title)
 
 def get_most_helpful_summary(users):
+  """Returns a string summary of the most helpful users, formatted for Reddit.
+
+  Only includes the top 10 most helpful users and only incldues users who have
+  answered at least 1 question.
+  """
   summary = ("User | # Helped"
             "\n----|:-----:|:-----:|")
   for user in users[:10]:
-    summary += f"\n{user.get_profile_link_string()} | {user.num_replies()}"
+    if user.num_replies() == 0:
+      continue;
+    else:
+      summary += f"\n{user.get_profile_link_string()} | {user.num_replies()}"
   return summary
 
 def get_most_helpful_without_replies_summary(users, reply_threshold):
