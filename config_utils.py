@@ -26,6 +26,7 @@ def add_command_line_args(config, argv):
             "pvq:a:",
             [
                 "print",
+                "once",
                 "print_questions",
                 "print_answers",
                 "post_id=",
@@ -34,8 +35,9 @@ def add_command_line_args(config, argv):
             ])
     except getopt.GetoptError:
         print('Run in continuous mode:                        python3 main.py')
+        print('Run the task once:                             python3 main.py --once')
         print('Print results instead of posting to Reddit:    python3 main.py --post_id xjhasd7')
-        print('Choose a post to scan (instead of config.ini): python3 main.py -q interesting_user_name')
+        print('Choose a post to scan (instead of config.ini): python3 main.py --post_id xjhasd7')
         print('Only include questions by 1 user:              python3 main.py -q interesting_user_name')
         print('Only include answers by 1 user:                python3 main.py -a interesting_user_name')
         print('Print scanned questions (for debugging):       python3 main.py --print_questions')
@@ -44,6 +46,8 @@ def add_command_line_args(config, argv):
     for opt, arg in opts:
        if opt in ["-p", "--print"]:
         config['mode'] = 'print'
+       if opt in ["--once"]:
+        config['once'] = 'true'
        if opt in ["--print_questions"]:
         config['print_questions'] = 'true'
        if opt in ["--print_answers"]:

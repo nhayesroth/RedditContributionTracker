@@ -67,9 +67,14 @@ def get_most_helpful_without_replies_summary(users, reply_threshold):
     for i in range(len(questions)):
       question = questions[i]
       num_replies = len(question.replies)
-      question_strings.append(f"[{num_replies} replies]({question.permalink})")
+      question_strings.append(f"[{pluralize_replies(num_replies)}]({question.permalink})")
     summary += ", ".join(question_strings)
   return summary
+
+def pluralize_replies(num_replies):
+  if num_replies == 1:
+    return "1 reply"
+  return f"{num_replies} replies"
 
 def get_human_readable_time(num_seconds):
   if num_seconds <= 60:

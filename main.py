@@ -134,7 +134,24 @@ def get_submission(reddit_instance, config):
       return submission
   raise ValueError('Unable to find target post. Check the subreddit and post_regex in config.ini')
 
-def post(submission, response, username):
+def construct_response(config, users_sorted_by_replies):
+  interval = int(config.get('interval'))
+  reply_threshold = int(config.get('reply_threshold'))
+  return (f"\nResults will update every ~{utils.get_human_readable_time(interval)}.\n"
+    "\n-----\n"
+    "\nThe following users have helped the most people in this thread:\n"
+    f"\n{utils.get_most_helpful_summary(users_sorted_by_replies)}\n"
+    "\n-----\n"
+    f"\nThe following users have helped the most people in this thread, but have fewer than {reply_threshold} replies to their own question(s):\n"
+    f"\n{utils.get_most_helpful_without_replies_summary(users_sorted_by_replies, reply_threshold)}\n")
+
+def print_or_post(config, submission, top_level_comments, response):
+  if config.get('mode') == 'post':
+    post(config, submission, top_level_comments, response)
+  else:
+    print(response)
+
+def post(config, submission, top_level_comments, response):
   """Posts the response to Reddit.
   - If the bot hasn't posted a top-level comment in the thread, yet, a new comment will be posted.
   - If the bot already has a top-level comment, that comment will be edited with the new results.
@@ -142,11 +159,11 @@ def post(submission, response, username):
   TODO: this isn't very efficient and sort of gimps the bot. would be better to track the comment ID
   and replace it directly
   """
-  top_level_comments = get_top_level_comments(submission)
+  bot_name = config.get('username')
   for comment in top_level_comments:
     if comment.author is None:
       continue
-    elif comment.author.name == username:
+    elif comment.author.name == bot_name:
       comment.edit(response)
       print(f"Edited previous comment at {time.ctime(time.time())}: {comment.permalink}")
       return
@@ -155,35 +172,26 @@ def post(submission, response, username):
 
 
 def task(config):
+  """Top-level task definition.
+
+  Scans a reddit thread, organizes users by contribution, then posts/prints the results.
+  """
   reddit_instance = get_reddit_instance(config)
   submission = get_submission(reddit_instance, config)
 
   top_level_comments = get_top_level_comments(submission)
   users_by_name = construct_dict_from_top_level_comments(top_level_comments, config)
   users_by_name = scan_replies_to_top_level_comments(users_by_name, config)
-
   users_sorted_by_replies = get_users_sorted_by_replies(users_by_name)
 
-  reply_threshold = 3
-  interval = int(config.get('interval'))
-  response = (f"\nResults will update every ~{utils.get_human_readable_time(interval)}.\n"
-        "\n-----\n"
-        "\nThe following users have helped the most people in this thread:\n"
-        f"\n{utils.get_most_helpful_summary(users_sorted_by_replies)}\n"
-        "\n-----\n"
-        f"\nThe following users have helped the most people in this thread, but have fewer than {reply_threshold} replies to their own question(s):\n"
-        f"\n{utils.get_most_helpful_without_replies_summary(users_sorted_by_replies, reply_threshold)}\n")
-  
-  if config.get('mode') == 'post':
-    post(submission, response, config.get('username'))
-  else:
-    print(response)
+  response = construct_response(config, users_sorted_by_replies)
+  print_or_post(config, submission, top_level_comments, response)
 
 def main(argv):
   config = config_utils.get_config(argv)
 
-  # If running in print mode => just run the task once.
-  if config['mode'] == 'print':
+  # If running in print mode or only running the task once => just run the task once.
+  if config.get('mode') == 'print' or config.get('once'):
     task(config)
     return
   else:
