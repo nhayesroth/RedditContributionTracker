@@ -153,9 +153,15 @@ def print_or_post(config, submission, top_level_comments, response):
 
 def post(config, submission, top_level_comments, response):
   """Posts the response to Reddit.
-  - If the bot hasn't posted a top-level comment in the thread, yet, a new comment will be posted.
-  - If the bot already has a top-level comment, that comment will be edited with the new results.
-  
+
+  Behavior depends on config.comment_mode:
+  - When comment_mode = 'edit'
+    - If the bot already has a top-level comment, that comment will be edited with the new results.
+    - If the bot hasn't posted a top-level comment in the thread, yet, a new comment will be posted.
+  - When comment_mode = 'new'
+    - If the bot already has a top-level comment, that comment will be deleted.
+    - A new comment will be posted.
+
   TODO: this isn't very efficient and sort of gimps the bot. would be better to track the comment ID
   and replace it directly
   """
@@ -164,9 +170,17 @@ def post(config, submission, top_level_comments, response):
     if comment.author is None:
       continue
     elif comment.author.name == bot_name:
-      comment.edit(response)
-      print(f"Edited previous comment at {time.ctime(time.time())}: {comment.permalink}")
-      return
+      comment_mode = config.get('comment_mode')
+      if comment_mode == 'edit':
+        comment.edit(response)
+        print(f"Edited previous comment at {time.ctime(time.time())}: {comment.permalink}")
+        return
+      elif comment_mode == 'new':
+        comment.delete()
+        print(f"Deleted previous comment at {time.ctime(time.time())}: {comment.permalink}")
+        break
+      else:
+        raise ValueError('Unexpected comment_mode: ' + comment_mode)
   comment = submission.reply(response)
   print(f"Posted new comment at {time.ctime(time.time())}: {comment.permalink}")
 

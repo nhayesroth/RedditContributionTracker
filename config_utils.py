@@ -31,31 +31,45 @@ def add_command_line_args(config, argv):
                 "print_answers",
                 "post_id=",
                 "question_username=",
-                "answer_username="
+                "answer_username=",
+                "comment_mode="
             ])
     except getopt.GetoptError:
+        # mode
         print('Run in continuous mode:                        python3 main.py')
         print('Run the task once:                             python3 main.py --once')
-        print('Print results instead of posting to Reddit:    python3 main.py --post_id xjhasd7')
+        
+        # comment_mode
+        print('Edit the same comment on each run:             python3 main.py')
+        print('Delete previous/post new on each run:          python3 main.py --coment_mode new')
+        
+        # targeting a post/user        
         print('Choose a post to scan (instead of config.ini): python3 main.py --post_id xjhasd7')
         print('Only include questions by 1 user:              python3 main.py -q interesting_user_name')
         print('Only include answers by 1 user:                python3 main.py -a interesting_user_name')
+        
+        # printing results
         print('Print scanned questions (for debugging):       python3 main.py --print_questions')
         print('Print scanned answers (for debugging):         python3 main.py --print_answers')
+
         sys.exit(2)
     for opt, arg in opts:
-       if opt in ["-p", "--print"]:
-        config['mode'] = 'print'
-       if opt in ["--once"]:
-        config['once'] = 'true'
-       if opt in ["--print_questions"]:
-        config['print_questions'] = 'true'
-       if opt in ["--print_answers"]:
-        config['print_answers'] = 'true'
-       if opt in ["--post_id"]:
-        config['post_id'] = arg
-       if opt in ["-q", "--question_username"]:
-        config['question_username'] = arg
-       if opt in ["-a", "--answer_username"]:
-        config['answer_username'] = arg
+        if opt in ["-p", "--print"]:
+            config['mode'] = 'print'
+        if opt in ["--once"]:
+            config['once'] = 'true'
+        if opt in ["--print_questions"]:
+            config['print_questions'] = 'true'
+        if opt in ["--print_answers"]:
+            config['print_answers'] = 'true'
+        if opt in ["--post_id"]:
+            config['post_id'] = arg
+        if opt in ["-q", "--question_username"]:
+            config['question_username'] = arg
+        if opt in ["-a", "--answer_username"]:
+            config['answer_username'] = arg
+        if opt in ["--comment_mode"]:
+            config['comment_mode'] = arg
+        else:
+            config['comment_mode'] = 'edit'
     return config
