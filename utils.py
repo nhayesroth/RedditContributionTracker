@@ -1,4 +1,5 @@
 import re
+import os
 from copy import deepcopy
 import time 
 
@@ -16,10 +17,10 @@ def get_abbreviated_comment(comment):
 
 In our case this means 2 things:
 - The post is stickied
-- The post title matches the post_regex in config.ini
+- The post title matches the post_regex environment variable
 """
-def is_target_post(submission, config):
-    regular_expression_object = re.compile(config['post_regex'])
+def is_target_post(submission):
+    regular_expression_object = re.compile(os.environ.get('post_regex'))
     return submission.stickied and regular_expression_object.match(submission.title)
 
 def get_most_helpful_summary(users):

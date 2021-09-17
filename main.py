@@ -4,21 +4,21 @@ import sys
 import threading
 import time
 import pdb
+import os
 
 import scheduler
 from user import User
-import config_utils
 import utils
 
 def get_top_level_comments(submission):
   submission.comments.replace_more(limit=None)
   return submission.comments
 
-def construct_dict_from_top_level_comments(top_level_comments, config):
+def construct_dict_from_top_level_comments(top_level_comments):
   """Scans the top-level comments and constructs a dictionary mapping(name -> User)."""
-  bot_username = config.get('username')
-  question_username = config.get('question_username')
-  print_questions = config.get('print_questions')
+  bot_username = os.environ.get('username')
+  question_username = os.environ.get('question_username')
+  print_questions = os.environ.get('print_questions')
 
   users_by_name = dict()
   for comment in top_level_comments:
@@ -44,8 +44,6 @@ def construct_dict_from_top_level_comments(top_level_comments, config):
       user = users_by_name.get(username, User(name=username, questions=[]))
       user.add_question(comment)
       users_by_name[username] = user
-      # if print_questions:
-      #   print(f"Question - {username} - {utils.get_abbreviated_comment(comment)}")
 
   if print_questions:
     print('\n----Questions----')
@@ -56,11 +54,11 @@ def construct_dict_from_top_level_comments(top_level_comments, config):
         
   return users_by_name
 
-def scan_replies_to_top_level_comments(users_by_name, config):
+def scan_replies_to_top_level_comments(users_by_name):
   """Scans replies to top-level comments and updates the users_by_name dict."""
-  bot_username = config.get('username')
-  answer_username = config.get('answer_username')
-  print_answers = config.get('print_answers')
+  bot_username = os.environ.get('username')
+  answer_username = os.environ.get('answer_username')
+  print_answers = os.environ.get('print_answers')
 
   repliers_by_name = dict()
   for username in users_by_name.keys():
@@ -114,29 +112,30 @@ def get_users_sorted_by_replies(users_by_name):
   users.sort(key=lambda user: user.num_replies(), reverse=True)
   return users
 
-def get_reddit_instance(config):
+def get_reddit_instance():
   return praw.Reddit(
-    user_agent=config.get('user_agent'),
-    client_id=config.get('client_id'),
-    client_secret=config.get('client_secret'),
-    username=config.get('username'),
-    password=config.get('password'),
+    user_agent=os.environ.get('user_agent'),
+    client_id=os.environ.get('client_id'),
+    client_secret=os.environ.get('client_secret'),
+    username=os.environ.get('username'),
+    password=os.environ.get('password'),
     validate_on_submit=True,
   )
 
-def get_submission(reddit_instance, config):
-  if (config.get('post_id')):
-    return reddit_instance.submission(id=config.get('post_id'))
+def get_submission(reddit_instance):
+  if (os.environ.get('post_id')):
+    return reddit_instance.submission(id=os.environ.get('post_id'))
   
-  subreddit = reddit_instance.subreddit(config.get('subreddit'))
+  subreddit = reddit_instance.subreddit(os.environ.get('subreddit'))
   for submission in subreddit.hot(limit=10):
-    if utils.is_target_post(submission, config):
+    if utils.is_target_post(submission):
       return submission
-  raise ValueError('Unable to find target post. Check the subreddit and post_regex in config.ini')
+  raise ValueError(
+    'Unable to find target post. Check the the post_id, subreddit, and post_regex environment variables')
 
-def construct_response(config, users_sorted_by_replies):
-  interval = int(config.get('interval'))
-  reply_threshold = int(config.get('reply_threshold'))
+def construct_response(users_sorted_by_replies):
+  interval = int(os.environ.get('interval'))
+  reply_threshold = int(os.environ.get('reply_threshold'))
   return (f"\nResults will update every ~{utils.get_human_readable_time(interval)}.\n"
     "\n-----\n"
     "\nThe following users have helped the most people in this thread:\n"
@@ -145,16 +144,16 @@ def construct_response(config, users_sorted_by_replies):
     f"\nThe following users have helped the most people in this thread, but have fewer than {reply_threshold} replies to their own question(s):\n"
     f"\n{utils.get_most_helpful_without_replies_summary(users_sorted_by_replies, reply_threshold)}\n")
 
-def print_or_post(config, submission, top_level_comments, response):
-  if config.get('mode') == 'post':
-    post(config, submission, top_level_comments, response)
+def print_or_post(submission, top_level_comments, response):
+  if os.environ.get('mode') == 'post':
+    post(submission, top_level_comments, response)
   else:
     print(response)
 
-def post(config, submission, top_level_comments, response):
+def post(submission, top_level_comments, response):
   """Posts the response to Reddit.
 
-  Behavior depends on config.comment_mode:
+  Behavior depends on comment_mode environment variable:
   - When comment_mode = 'edit'
     - If the bot already has a top-level comment, that comment will be edited with the new results.
     - If the bot hasn't posted a top-level comment in the thread, yet, a new comment will be posted.
@@ -165,12 +164,12 @@ def post(config, submission, top_level_comments, response):
   TODO: this isn't very efficient and sort of gimps the bot. would be better to track the comment ID
   and replace it directly
   """
-  bot_name = config.get('username')
+  bot_name = os.environ.get('username')
   for comment in top_level_comments:
     if comment.author is None:
       continue
     elif comment.author.name == bot_name:
-      comment_mode = config.get('comment_mode')
+      comment_mode = os.environ.get('comment_mode')
       if comment_mode == 'edit':
         comment.edit(response)
         print(f"Edited previous comment at {time.ctime(time.time())}: {comment.permalink}")
@@ -185,35 +184,42 @@ def post(config, submission, top_level_comments, response):
   print(f"Posted new comment at {time.ctime(time.time())}: {comment.permalink}")
 
 
-def task(config):
+def task():
   """Top-level task definition.
 
   Scans a reddit thread, organizes users by contribution, then posts/prints the results.
   """
-  reddit_instance = get_reddit_instance(config)
-  submission = get_submission(reddit_instance, config)
+  print(f"DEBUG - 1 - get_reddit_instance")
+  reddit_instance = get_reddit_instance()
+  print(f"DEBUG - 2 - get_submission")
+  submission = get_submission(reddit_instance)
 
+  print(f"DEBUG - 3 - get_top_level_comments")
   top_level_comments = get_top_level_comments(submission)
-  users_by_name = construct_dict_from_top_level_comments(top_level_comments, config)
-  users_by_name = scan_replies_to_top_level_comments(users_by_name, config)
+  print(f"DEBUG - 4 - construct_dict_from_top_level_comments")
+  users_by_name = construct_dict_from_top_level_comments(top_level_comments)
+  print(f"DEBUG - 5 - scan_replies_to_top_level_comments")
+  users_by_name = scan_replies_to_top_level_comments(users_by_name)
+  print(f"DEBUG - 6 - get_users_sorted_by_replies")
   users_sorted_by_replies = get_users_sorted_by_replies(users_by_name)
 
-  response = construct_response(config, users_sorted_by_replies)
-  print_or_post(config, submission, top_level_comments, response)
+  print(f"DEBUG - 7 - construct_response")
+  response = construct_response(users_sorted_by_replies)
+  print(f"DEBUG - 8 - print_or_post")
+  print_or_post(submission, top_level_comments, response)
 
 def main(argv):
-  config = config_utils.get_config(argv)
-
-  # If running in print mode or only running the task once => just run the task once.
-  if config.get('mode') == 'print' or config.get('once'):
-    task(config)
-    return
-  else:
-    # Otherwise, run the task once immediately.
-    task(config)
-    # And schedule future runs on an interval.
-    interval = int(config.get('interval'));
-    threading.Thread(target=lambda: scheduler.every(interval, task, config)).start()
+  task()
+  return
+  # if os.environ.get('once'):
+  #   task()
+  #   return
+  # else:
+  #   # Otherwise, run the task once immediately.
+  #   task()
+  #   # And schedule future runs on an interval (default 10 minutes).
+  #   interval = int(os.environ.get('interval') or 600);
+  #   threading.Thread(target=lambda: scheduler.every(interval, task)).start()
 
 if __name__ == "__main__":
   main(sys.argv[1:])

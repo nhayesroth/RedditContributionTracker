@@ -16,10 +16,25 @@ $ python3 main.py
 ```
 
 ## Configuration
-Most static configuration options are found in [config.ini](https://github.com/nhayesroth/RedditContributionTracker/blob/master/config.ini):
+Options are configured as environment variables. For example:
+
+```bash
+# On local machine
+export interval=600
+export subreddit=DynastyFF
+export post_regex='\[Daily - TRADE\]'
+
+# On Heroku
+heroku config:set client_id=foobar
+heroku config:set client_secret=zebra
+```
+
+### Important options:
+
 - `client_id`: The ID of your bot (see [bot_creds_example.png](bot_creds_example.png)).
 - `client_secret`: The secret of your bot (see [bot_creds_example.png](bot_creds_example.png)).
 - `interval`: The interval (in seconds) the bot will wait between scans.
+- `mode`: Either `print`, which will print results to the command line, or `post`, which will post results as a Reddit comment.
 - `password`: The password for your bot's account.
 - `post_regex`: A python regex to match the reddit post your bot will scan.
 - `reply_threshold`: The minimum number of replies to a top-level comment before the bot will stop including it in the results.
@@ -27,13 +42,14 @@ Most static configuration options are found in [config.ini](https://github.com/n
 - `user_agent`: User agent passed to PRAW (likely the name of your bot or a description of the specific application).
 - `username`: The username of your bot's reddit account.
 
-You can also specify several options at the command line. These can be seen in [config_utils.py](https://github.com/nhayesroth/RedditContributionTracker/blob/master/config_utils.py):
-- `answer_username`: Only include answers from 1 user (mostly for debugging).
-- `post_id`: Choose a specific post to scan (instead of using the `subreddit` and `post_regex` in `config.ini`)
-- `print_answers`: Prints scanned answers on the command-line (mostly for debugging).
-- `print_questions`: Prints scanned questions on the command-line (mostly for debugging).
-- `print`: Runs the bot once (as opposed to continuously) and prints the results (as opposed to posting them to reddit).
-- `question_username`: Only include questions from 1 user (mostly for debugging).
+
+### Debug options:
+
+- `answer_username`: Only include answers from 1 user.
+- `post_id`: Choose a specific post to scan (instead of using the `subreddit` and `post_regex`).
+- `print_answers`: Prints scanned answers on the command-line.
+- `print_questions`: Prints scanned questions on the command-line.
+- `question_username`: Only include questions from 1 user.
 
 
 ## How?
