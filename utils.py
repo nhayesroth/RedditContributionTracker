@@ -1,6 +1,5 @@
 import re
 import os
-from copy import deepcopy
 import time 
 
 """Returns an abbreviated comment string.

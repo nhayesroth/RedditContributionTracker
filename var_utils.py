@@ -1,6 +1,7 @@
 import argparse
 import os
-from debug import log
+
+from logger import log
 
 """Loads all variables for the task
 

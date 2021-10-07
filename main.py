@@ -1,13 +1,8 @@
-import getopt
 import praw
 import sys
-import threading
 import time
-import pdb
-import os
-import scheduler
 
-from debug import log
+from logger import log
 from user import User
 import utils
 from var_utils import load_variables
@@ -185,7 +180,7 @@ class Task:
 
   def print_or_post(self, submission, top_level_comments, response):
     if self.vars.mode == 'post':
-      post(submission, top_level_comments, response)
+      self.post(submission, top_level_comments, response)
     elif self.vars.mode == 'print':
       print(response)
     else:
