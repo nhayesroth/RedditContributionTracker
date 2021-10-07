@@ -1,6 +1,7 @@
 import praw
 import sys
 import time
+import re
 
 from logger import log
 from user import User
