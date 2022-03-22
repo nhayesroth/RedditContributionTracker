@@ -1,22 +1,27 @@
+import copy
 import praw
 import sys
+import threading
 import time
 import re
 
-from logger import log
-from user import User
+import logger
 import utils
-from var_utils import load_variables
+import var_utils
+
+from user import User
 
 class Task:
-  def __init__(self):
-    self.vars = load_variables()
+  def __init__(self, vars):
+    self.vars = vars
 
   def execute(self):
     """Top-level task definition.
 
     Scans a reddit thread, organizes users by contribution, then posts/prints the results.
     """
+    logger.log(f"Task starting...", self.vars, True)
+    self.vars.start_time = time.time()
     submission = self.get_submission()
     top_level_comments = self.get_top_level_comments(submission)    
     users_by_name = self.construct_dict_from_top_level_comments(top_level_comments)    
@@ -24,6 +29,10 @@ class Task:
     users_sorted_by_replies = self.get_users_sorted_by_replies(users_by_name)
     response = self.construct_response(users_sorted_by_replies)    
     self.print_or_post(submission, top_level_comments, response)
+    logger.log(
+      f"Task finished in {time.strftime('%Mm%Ss', time.gmtime(time.time() - self.vars.start_time))}",
+      self.vars,
+      True)
 
   def get_submission(self):
     reddit_instance = praw.Reddit(
@@ -37,16 +46,15 @@ class Task:
     # If a post_id is supplied, retrieve it direcly.
     if (self.vars.post_id):
       submission = reddit_instance.submission(id = self.vars.post_id)
-      log(f"Retrieved submission by ID: {self.vars.post_id}", self.vars)
+      logger.log(f"Retrieved submission by ID: {self.vars.post_id}", self.vars)
       return submission
     
     # Otherwise, use supplied subreddit and post_regex to find it amongst hot and stickied posts.
     if (self.vars.subreddit and self.vars.post_regex):
       subreddit = reddit_instance.subreddit(self.vars.subreddit)
       for submission in subreddit.hot(limit=10):
-        regular_expression_object = re.compile(self.vars.post_regex)
-        if submission.stickied and regular_expression_object.match(submission.title):
-          log(f"Successfully found submission: {submission.title} ({submission.permalink})", self.vars)
+        if re.search(self.vars.post_regex, submission.title):
+          logger.log(f"Successfully found submission: {submission.title} ({submission.permalink})", self.vars)
           return submission
 
     # Otherwise, throw an error.
@@ -54,15 +62,15 @@ class Task:
       f"Unable to find target post. Check the the post_id ({self.vars.post_id}), subreddit ({self.vars.subreddit}), and post_regex ({self.vars.post_regex}) variables.")
 
   def get_top_level_comments(self, submission):
-    log(f"Retrieving top-level comments...", self.vars)
+    logger.log(f"Retrieving top-level comments...", self.vars)
     submission.comments.replace_more(limit=None)
     
-    log(f"Retrieved {submission.comments.__len__()} top-level comments", self.vars)
+    logger.log(f"Retrieved {submission.comments.__len__()} top-level comments", self.vars)
     return submission.comments
 
   def construct_dict_from_top_level_comments(self, top_level_comments):
     """Scans the top-level comments and constructs a dictionary mapping(name -> User)."""
-    log(f"Constructing a username dictionary from top-level comments...", self.vars)
+    logger.log(f"Constructing a username dictionary from top-level comments...", self.vars)
     bot_username = self.vars.username
     question_username = self.vars.question_username
     print_questions = self.vars.print_questions
@@ -99,12 +107,12 @@ class Task:
         for question in users_by_name.get(username).questions:
           print(f"\t{utils.get_abbreviated_comment(question)}")
           
-    log(f"Dictionary includes {len(users_by_name)} users", self.vars)
+    logger.log(f"Dictionary includes {len(users_by_name)} users", self.vars)
     return users_by_name
 
   def scan_replies_to_top_level_comments(self, users_by_name):
     """Scans replies to top-level comments and updates the users_by_name dict."""
-    log(f"Scanning replies to top-level comments...", self.vars)
+    logger.log(f"Scanning replies to top-level comments...", self.vars)
     bot_username = self.vars.username
     answer_username = self.vars.answer_username
     print_answers = self.vars.print_answers
@@ -152,8 +160,8 @@ class Task:
       else:
         users_by_name[username] = replier
 
-    log(f"Found replies from {len(repliers_by_name)} users", self.vars)
-    log(f"Dictionary now includes {len(users_by_name)} users", self.vars)
+    logger.log(f"Found replies from {len(repliers_by_name)} users", self.vars)
+    logger.log(f"Dictionary now includes {len(users_by_name)} users", self.vars)
 
     return users_by_name
 
@@ -162,12 +170,13 @@ class Task:
 
     Filters any users that have not contributed anything.
     """
-    log("Sorting users by how many replies they've made...", self.vars)
+    logger.log("Sorting users by how many replies they've made...", self.vars)
     users = [user for user in list(users_by_name.values()) if user.num_replies() > 0]
     users.sort(key=lambda user: user.num_replies(), reverse=True)
     return users
 
   def construct_response(self, users_sorted_by_replies):
+    logger.log("Constructing response...", self.vars)
     interval = int(self.vars.interval)
     reply_threshold = int(self.vars.reply_threshold)
 
@@ -180,10 +189,12 @@ class Task:
       f"\n{utils.get_most_helpful_without_replies_summary(users_sorted_by_replies, reply_threshold)}\n")
 
   def print_or_post(self, submission, top_level_comments, response):
+    logger.log("Printing or posting response...", self.vars)
     if self.vars.mode == 'post':
       self.post(submission, top_level_comments, response)
     elif self.vars.mode == 'print':
-      print(response)
+      logger.log(f"Printing response: \n{response}", self.vars, True)
+      logger.log(f"Response printed at {time.ctime(time.time())}", self.vars)
     else:
       raise ValueError(f"Unexpected mode ({self.vars.mode}). Should be either `post` or `print`.")
 
@@ -198,6 +209,7 @@ class Task:
       - If the bot already has a top-level comment, that comment will be deleted.
       - A new comment will be posted.
     """
+    logger.log("Posting response...", self.vars)
     bot_name = self.vars.username
     for comment in top_level_comments:
       if comment.author is None:
@@ -206,19 +218,30 @@ class Task:
         comment_mode = self.vars.comment_mode
         if comment_mode == 'edit':
           comment.edit(response)
-          print(f"Edited previous comment at {time.ctime(time.time())}: {comment.permalink}")
+          logger.log(f"Edited previous comment at {time.ctime(time.time())}: {comment.permalink}", self.vars, True)
           return
         elif comment_mode == 'new':
           comment.delete()
-          print(f"Deleted previous comment at {time.ctime(time.time())}: {comment.permalink}")
+          logger.log(f"Deleted previous comment at {time.ctime(time.time())}: {comment.permalink}", self.vars, True)
           break
         else:
           raise ValueError('Unexpected comment_mode: ' + comment_mode)
     comment = submission.reply(response)
-    print(f"Posted new comment at {time.ctime(time.time())}: {comment.permalink}")
+    logger.log(f"Posted new comment at {time.ctime(time.time())}: {comment.permalink}", self.vars, True)
 
 def main(argv):
-  Task().execute()
+  vars = var_utils.load_variables()
+  # Spawn a separate thread to handle each of the target posts in parallel.
+  for post in vars.posts:
+    # Make a copy of the program's vars for each thread and set the target post info for that thread.
+    task_vars = copy.deepcopy(vars)
+    task_vars.post_id = post.post_id
+    task_vars.post_regex = post.post_regex
+    task_vars.subreddit = post.subreddit
+    task_vars.posts = None
+    task = Task(task_vars)
+
+    threading.Thread(target = task.execute).start()
   return
 
 if __name__ == "__main__":

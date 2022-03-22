@@ -2,7 +2,7 @@
 
 ## Summary
 Python script for a reddit bot that does the following:
-- Scans a reddit thread for user contributions (top-level comments and replies to top-level comments)
+- Scans one or more reddit threads for user contributions (top-level comments and replies to top-level comments)
 - Sorts the results to determine:
   - The most helpful users (measured by the number of replies they've made to other top-level comments) 
   - The most helpful users who have not received replies to their own top-level comments
@@ -12,9 +12,8 @@ Python script for a reddit bot that does the following:
 - Configure the bot using environment variables for your use case (see full ist of options below).
 ```bash
 # On local machine
-export interval=600
-export subreddit=DynastyFF
-export post_regex='\[Daily - TRADE\]'
+export comment_mode='edit'
+export posts='[ { "subreddit":"abc", "post_regex":"Hello world" }, { "subreddit":"Zebra", "post_regex":"Fancy thread title" } ]'
 
 # On Heroku
 heroku config:set client_id=foobar
@@ -35,9 +34,16 @@ $ python3 main.py --debug True --reply_threshold 5
 - `password`: The password for your bot's account.
 
 ### Configure which post your bot scans
-- `subreddit`: The subreddit the bot will search for the the thread matching `post_regex`.
-- `post_regex`: A python regex to match the reddit post your bot will scan.
-- `post_id`: Choose a specific post to scan (instead of using the `subreddit` and `post_regex`).
+- `posts`: A JSON string that describes one or more threads that the bot will operate on. Can be a single object describing 1 thread, or a list of objects describing multiple threads. Meaningful attributes are:
+  - `subreddit`: The subreddit the bot will search for the the thread matching `post_regex`.
+  - `post_regex`: A python regex to match the reddit post your bot will scan.
+  - `post_id`: Choose a specific post to scan (instead of using the `subreddit` and `post_regex`).
+  - Examples:
+  ```
+  export posts='[{ "subreddit": "pics", "post_regex": "Discussion thread" }, { "subreddit": "politics", "post_regex": "Daily chat" }]'
+  export posts='[{ "post_id": "abc123" }]'
+  export posts='{ "post_id": "foobar" }'
+  ```
 
 ### Configure how the bot processes the target post
 - `reply_threshold`: The minimum number of replies to a top-level comment before the bot will stop including it in the results.

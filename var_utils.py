@@ -1,7 +1,7 @@
 import argparse
+import json
 import os
-
-from logger import log
+import logger
 
 """Loads all variables for the task
 
@@ -37,17 +37,10 @@ def load_variables():
 
   # Arguments related to selecting a post
   parser.add_argument(
-    "--subreddit",
-    default = os.environ.get('subreddit'),
-    help = "The subreddit the bot will search for the the thread matching.")  
-  parser.add_argument(
-    "--post_regex",
-    default = os.environ.get('post_regex'),
-    help = "A python regex to match the reddit post your bot will scan.")  
-  parser.add_argument(
-    "--post_id",
-    default = os.environ.get('post_id'),
-    help = "Choose a specific post to scan (instead of subreddit and post_regex).")
+    "--posts",
+    default = os.environ.get('posts'),
+    type = parse_posts,
+    help = "JSON string describing one or more posts to target. See README for examples.")
 
   # Arguments that alter how a post is processed
   parser.add_argument(
@@ -91,7 +84,48 @@ def load_variables():
 
   # Read arguments from command line
   args = parser.parse_args()
-  
-  log(args, args)
 
   return args
+
+
+def parse_posts(string):
+  """
+  Parses a user-supplied string representing one or more target posts into a list of standard namespaces.
+  
+  For example, the user can supply a list containing using different styles to target two different posts:
+  - (1) a subreddit and post title regex
+  - (2) a specific post
+  string = '[{ "subreddit": "foo", "post_regex": "bar" }, { "post_id": "zebra" }]'
+  # =>
+    [
+      { subreddit: "foo", post_regex: "bar", post_id: None }
+      { subreddit: None, post_regex: None, post_id": "zebra" }}
+    ]
+
+  Alternatively, the user can supply a single object that describes one target post:
+  string = '{ "post_id": "hello world" }'
+  # ->
+    [
+      { subreddit: None, post_regex: None, post_id": "hello world" }}
+    ]
+  """
+  # Load the posts argument as a json object
+  json_obj = json.loads(string)
+  # If the json loads as a list, convert each object to its own post namespace.
+  if isinstance(json_obj, list):
+    list_of_post_dicts = json_obj
+    return list(map(lambda post_dict: parse_post(post_dict), list_of_post_dicts))
+  # If the json loads as object, convert that object to a post namespace and return a list it.
+  elif isinstance(json_obj, dict):
+    post_dict = json_obj
+    return [parse_post(post_dict)]
+  # Otherwise, the user supplied bad input.
+  else:
+    raise ValueError(
+      f"Unable to parse posts. Please verify you provided valid json. Check the README for examples. Value you provided: {string}")
+
+def parse_post(dict):
+  return argparse.Namespace(
+    post_id = dict.get('post_id'),
+    post_regex = dict.get('post_regex'),
+    subreddit = dict.get('subreddit'))
