@@ -223,7 +223,7 @@ class Task:
         elif comment_mode == 'new':
           comment.delete()
           logger.log(f"Deleted previous comment at {time.ctime(time.time())}: {comment.permalink}", self.vars, True)
-          break
+          continue
         else:
           raise ValueError('Unexpected comment_mode: ' + comment_mode)
     comment = submission.reply(response)
