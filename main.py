@@ -24,7 +24,15 @@ class Task:
     self.vars.start_time = time.time()
     submission = self.get_submission()
     top_level_comments = self.get_top_level_comments(submission)    
-    users_by_name = self.construct_dict_from_top_level_comments(top_level_comments)    
+    users_by_name = self.construct_dict_from_top_level_comments(top_level_comments)
+    # Short-circuit if there are no user comments in the thread
+    if not users_by_name:
+      logger.log(
+        f"Task finished early due to no user comments in {time.strftime('%Mm%Ss', time.gmtime(time.time() - self.vars.start_time))}",
+        self.vars,
+        True)
+      return
+    
     users_by_name = self.scan_replies_to_top_level_comments(users_by_name)    
     users_sorted_by_replies = self.get_users_sorted_by_replies(users_by_name)
     response = self.construct_response(users_sorted_by_replies)    
